@@ -77,7 +77,7 @@ void setup() {
   // PC6 o AY_RESET#   Digital Pin 5 (PWM)
   // PC7 o AY_CLK      Digital Pin 13 (PWM)
   DDRC=0x00 | (1<<6) | (1<<7);
-  PORTC=0x00;  
+  PORTC=0x00;
 
   // PD0 o AY_Data0    Digital pin 3 (SCL)(PWM)
   // PD1 o AY_Data1    Digital pin 2 (SDA)
@@ -118,8 +118,9 @@ void setup() {
   delay(1);    
   digitalWrite(AY_RESET,HIGH);
 
-  // Enable PORT A on the AY-3-8912 and turn off all leds
-  AyRegister(AY_ENABLE,B01000000);
+  // Enable PORT A, and the thre tone channels on the AY-3-8912 
+  // and turn off all leds
+  AyRegister(AY_ENABLE,B01111000);
   AyPort(0x00); 
 
   DEBUGLED_ON;
@@ -142,6 +143,18 @@ void loop() {
   LcdInit();
   delay(500);
 
+  AyRegister(AY_CH_A_AMPLITUDE, 3); // Full volume ch A
+  AyRegister(AY_CH_B_AMPLITUDE, 3); // Full volume ch B
+  AyRegister(AY_CH_C_AMPLITUDE, 3); // Full volume ch C
+
+  AyRegister(AY_CH_A_FINETUNE, 130);
+  AyRegister(AY_CH_A_COARSETUNE, 1);
+  AyRegister(AY_CH_B_FINETUNE, 120);
+  AyRegister(AY_CH_B_COARSETUNE, 1);
+  AyRegister(AY_CH_C_FINETUNE, 110);
+  AyRegister(AY_CH_C_COARSETUNE, 1);
+
+
   LcdXY(0,0);LcdString("Mount=");
   res=pf_mount(&fs);
   LcdCharacter(48+res);
@@ -162,5 +175,9 @@ void loop() {
 
 
   DEBUGLED_OFF;
-  for (;;);
+  for (;;) {
+      delay(150);
+      AyRegister(AY_CH_A_FINETUNE, rand()&0xFF);
+//      AyRegister(AY_CH_A_COARSETUNE, 1);
+  }
 }
