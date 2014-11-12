@@ -114,7 +114,7 @@ void setup() {
   digitalWrite(AY_RESET,LOW);
 
  // Start timer4 output to D13
-  InitTimer4(2000000);
+  InitTimer4(1000000);
   SetTimer4Duty(512);
   Timer4Start();
   
@@ -140,12 +140,32 @@ void setup() {
   EICRB |= (1<<ISC40) | (1<<ISC50);
   PCICR |= ( 1<<PCIE0 );
 
+
+  TCCR1A = 0;
+  TCCR1B = 0;
+
+  TCNT1 = 64286;   // preload timer 65536-16MHz/256/50Hz
+  TCCR1B |= (1 << CS12);    // 256 prescaler 
+  TIMSK1 |= (1 << TOIE1);   // enable timer overflow interrupt
+
+
   DEBUGLED_ON;
 }
 
 
+volatile uint16_t tick;
+
 //
 //
+//
+ISR(TIMER1_OVF_vect) {
+  TCNT1 = 64286;   // preload timer 65536-16MHz/256/50Hz
+  tick++;
+}
+
+
+//
+// 
 //
 ISR(PCINT0_vect) {
   // Currently we only have one interrupt source
@@ -156,6 +176,8 @@ ISR(PCINT0_vect) {
 
 
 
+uint8_t buf[512];     // File read buffer
+uint8_t frame[16];    // Sound frame to send to AY
 FATFS  fs;
 
 //
@@ -164,8 +186,11 @@ FATFS  fs;
 void loop() {
   int res;
   int i;
-  char buf[16];
   unsigned int br;
+  uint16_t frameNo;
+  uint16_t lastTick;
+  uint16_t  rp;
+  uint8_t   wp;
   
   DEBUGLED_OFF;
   delay(500);
@@ -173,35 +198,37 @@ void loop() {
   LcdInit();
   delay(500);
 
-  AyRegister(AY_CH_A_AMPLITUDE, 3); // Full volume ch A
-  AyRegister(AY_CH_B_AMPLITUDE, 3); // Full volume ch B
-  AyRegister(AY_CH_C_AMPLITUDE, 3); // Full volume ch C
-
-  AyRegister(AY_CH_A_FINETUNE, 130);
-  AyRegister(AY_CH_A_COARSETUNE, 1);
-  AyRegister(AY_CH_B_FINETUNE, 120);
-  AyRegister(AY_CH_B_COARSETUNE, 1);
-  AyRegister(AY_CH_C_FINETUNE, 110);
-  AyRegister(AY_CH_C_COARSETUNE, 1);
-
-
   LcdXY(0,0);LcdString("Mount=");
   res=pf_mount(&fs);
   LcdCharacter(48+res);
 
   LcdXY(0,1);LcdString("Open=");
-  res=pf_open("ABCDEFGH.IJK");
+  res=pf_open("LastNinj.ymb");
   LcdCharacter(48+res);
   
-  LcdXY(0,2);LcdString("Read=");
-  for (i=0; i<16; i++) buf[i]='@';
-  res=pf_read(buf, 16, &br);    /* Read data to the buff[] */
-  LcdCharacter(48+res);
+  LcdXY(0,2);LcdString("Reading");
 
-  LcdXY(0,3);
-  for (i=0; i<16; i++) {
-    LcdCharacter(buf[i]);
+  frameNo=0;
+  rp=74;
+  wp=0;
+  lastTick=tick;
+  res=pf_read(buf, sizeof(buf), &br);    
+  for (;;) {
+    for (wp=0; wp<16; wp++) {
+      if (rp==512) {
+        res=pf_read(buf, sizeof(buf), &br);
+        rp=0;
+      }
+      frame[wp]=buf[rp++];
+    }
+    while (lastTick==tick);
+    lastTick=tick;
+    for (wp=0; wp<16; wp++) AyRegister(wp, frame[wp]);
+    LcdXY(0,3);LcdString("Frame ");
+    LcdPrintUint16(frameNo);
+    frameNo++;
   }
+
 
 
   DEBUGLED_OFF;

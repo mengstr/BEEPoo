@@ -192,6 +192,27 @@ void LcdString(char *string){
 
 
 //
+// Print an uint16_t as a string with 0-padding
+//
+void LcdPrintUint16(uint16_t value) {
+  static uint16_t powers[]={10,100,1000,10000,100000,1000000,10000000,100000000,1000000000};
+  uint16_t power; 
+  char digit;
+  char i;
+
+  for (i=4; i>=0; i--) {
+    digit='0';
+    power=powers[i];
+    while (value >= power) {
+      value -= power;
+      digit++;
+    }
+    LcdCharacter(digit);
+  }
+  LcdCharacter('0'+value);
+}
+
+//
 // Send all the required initialization commands to the display
 //
 void LcdInit(void) {

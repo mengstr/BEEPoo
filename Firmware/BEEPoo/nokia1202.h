@@ -20,13 +20,13 @@ extern "C" {
 
 #define TOGGLECLK      __asm__("nop\n\t"); LCD_CLK_HIGH; __asm__("nop\n\t"); LCD_CLK_LOW; __asm__("nop\n\t");
 
-
 void LcdInit(void);
 void LcdXY(uint8_t x, uint8_t y);
 void LcdClear(void);
 void LcdFill(void);
 void LcdCharacter(char ch);
 void LcdString(char *string);
+void LcdPrintUint16(uint16_t value);
 
 #ifdef __cplusplus
 }
