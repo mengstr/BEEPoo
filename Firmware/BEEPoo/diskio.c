@@ -154,7 +154,7 @@ DRESULT disk_readp (
 
 	if (!(CardType & CT_BLOCK)) sector *= 512;	/* Convert to byte address if needed */
 
-	SpiEnable(0);	// Slow speed
+	SpiEnable(1);	// High speed
 	res = RES_ERROR;
 	if (send_cmd(CMD17, sector) == 0) {	/* READ_SINGLE_BLOCK */
 

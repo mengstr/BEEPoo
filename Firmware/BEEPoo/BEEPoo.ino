@@ -14,8 +14,8 @@
 //   PB1 SCK         SCK
 //   PB2 MOSI        MOSI
 //   PB3 MISO        MISO
-//   PB4 Rotary Q1   Digital pin 8 
-//   PB5 Rotary Q2   Digital Pin 9 (PWM)
+//   PB4 Rotary Q1   Digital pin 8  (PCINT4)
+//   PB5 Rotary Q2   Digital Pin 9 (PCINT5) (PWM)
 //   PB6 AY_BC1      Digital Pin 10 (PWM)
 //   PB7             Digital pin 11 (PWM)
 //   
@@ -44,6 +44,7 @@
 // 
 
 #include <stdint.h>
+#include "rotary.h"
 #include "spi.h"
 #include "timer4.h"
 #include "ay38912.h"
@@ -59,10 +60,13 @@ int DEBUG_LED   = 11;       // D11
 #define DEBUGLED_OFF PORTB &= B01111111
 
 
+
 //
 //
 //
 void setup() {
+  uint8_t mask;
+
   // PB0 o SD_CS       RXLED
   // PB1 o SCK         SCK
   // PB2 o MOSI        MOSI
@@ -72,7 +76,8 @@ void setup() {
   // PB6 o AY_BC1      Digital Pin 10 (PWM)
   // PB7 o DEBUGLED    Digital pin 11 (PWM)
   DDRB=0x00 | (1<<0) | (1<<1) | (1<<2) | (1<<6) | (1<<7);
-  PORTB=0x00 | (1<<3) | (1<<4) | (1<<5);  // Enable pullup
+  // Enable pullup on Rotary Q1/Q3 & MISO
+  PORTB=0x00 | (1<<3) | (1<<4) | (1<<5);  
 
   // PC6 o AY_RESET#   Digital Pin 5 (PWM)
   // PC7 o AY_CLK      Digital Pin 13 (PWM)
@@ -95,22 +100,21 @@ void setup() {
   DDRE=0x00 | (1<<2) | (1<<6);
   PORTE=0x00;  
 
-  // PF0 Button      Analog In 5
-  // PF1 Button      Analog In 4
-  // PF4 Button      Analog In 3
-  // PF5 Button      Analog In 2
-  // PF6 Button      Analog In 1
-  // PF7 Rotary But  Analog In 0
+  // PF0 i Button      Analog In 5
+  // PF1 i Button      Analog In 4
+  // PF4 i Button      Analog In 3
+  // PF5 i Button      Analog In 2
+  // PF6 i Button      Analog In 1
+  // PF7 i Rotary But  Analog In 0
   DDRF=0x00;
-  PORTF=0x00;  
+  // Enable pullup on all Buttons & Rotary Button
+  PORTB=0x00 | (1<<0) | (1<<1) | (1<<4) | (1<<5) | (1<<6) | (1<<7);  
 
-  // Reset 
+  // Reset AY389-10
   digitalWrite(AY_RESET,LOW);
-  digitalWrite(AY_CLK,LOW);
-  digitalWrite(DEBUG_LED,LOW);
 
-  // Start timer4 output to D13
-  InitTimer4(1000000);
+ // Start timer4 output to D13
+  InitTimer4(2000000);
   SetTimer4Duty(512);
   Timer4Start();
   
@@ -121,10 +125,36 @@ void setup() {
   // Enable PORT A, and the thre tone channels on the AY-3-8912 
   // and turn off all leds
   AyRegister(AY_ENABLE,B01111000);
+  for (mask=0x01; mask; mask*=2) {
+    AyPort(mask);
+    delay(25);
+  }
+  for (mask=0x40; mask; mask/=2) {
+    AyPort(mask);
+    delay(25);
+  }
   AyPort(0x00); 
+
+  // Turn on interrupts for Rotary Encoder
+  PCMSK0 |= (1<<PCINT4) | (1<<PCINT5);      //enable encoder pins interrupt sources
+  EICRB |= (1<<ISC40) | (1<<ISC50);
+  PCICR |= ( 1<<PCIE0 );
 
   DEBUGLED_ON;
 }
+
+
+//
+//
+//
+ISR(PCINT0_vect) {
+  // Currently we only have one interrupt source
+  // so we can assume it's a rotary encoder interrupt
+  IrqRotaryEncoder();
+}
+
+
+
 
 FATFS  fs;
 
@@ -176,7 +206,8 @@ void loop() {
 
   DEBUGLED_OFF;
   for (;;) {
-      delay(150);
+      delay(1);
+      AyPort(rotaryValue);
       AyRegister(AY_CH_A_FINETUNE, rand()&0xFF);
 //      AyRegister(AY_CH_A_COARSETUNE, 1);
   }
