@@ -46,10 +46,14 @@
 #include <stdint.h>
 #include "rotary.h"
 #include "spi.h"
+#include "timer1.h"
 #include "timer4.h"
 #include "ay38912.h"
 #include "nokia1202.h"
 #include "pff.h"
+#include "selectFile.h"
+#include "ymplayer.h"
+#include "buttons.h"
 
 int AY_RESET    = 5;        // D5
 int AY_CLK      = 13;       // D13
@@ -58,7 +62,6 @@ int DEBUG_LED   = 11;       // D11
 
 #define DEBUGLED_ON  PORTB |= B10000000
 #define DEBUGLED_OFF PORTB &= B01111111
-
 
 
 //
@@ -108,7 +111,7 @@ void setup() {
   // PF7 i Rotary But  Analog In 0
   DDRF=0x00;
   // Enable pullup on all Buttons & Rotary Button
-  PORTB=0x00 | (1<<0) | (1<<1) | (1<<4) | (1<<5) | (1<<6) | (1<<7);  
+  PORTF=0x00 | (1<<0) | (1<<1) | (1<<4) | (1<<5) | (1<<6) | (1<<7);  
 
   // Reset AY389-10
   digitalWrite(AY_RESET,LOW);
@@ -140,45 +143,39 @@ void setup() {
   EICRB |= (1<<ISC40) | (1<<ISC50);
   PCICR |= ( 1<<PCIE0 );
 
-
-  TCCR1A = 0;
-  TCCR1B = 0;
-
-  TCNT1 = 64286;   // preload timer 65536-16MHz/256/50Hz
-  TCCR1B |= (1 << CS12);    // 256 prescaler 
-  TIMSK1 |= (1 << TOIE1);   // enable timer overflow interrupt
-
+  InitTimer1(64286);  
 
   DEBUGLED_ON;
 }
 
 
-volatile uint16_t tick;
 
 //
-//
+// Handle the 50Hz timer1 interrupt
 //
 ISR(TIMER1_OVF_vect) {
-  TCNT1 = 64286;   // preload timer 65536-16MHz/256/50Hz
-  tick++;
+  IrqTimer1();
 }
 
 
 //
-// 
+// Currently we only have one interrupt source
+// so we can assume it's a rotary encoder interrupt
 //
 ISR(PCINT0_vect) {
-  // Currently we only have one interrupt source
-  // so we can assume it's a rotary encoder interrupt
   IrqRotaryEncoder();
 }
 
 
 
 
-uint8_t buf[512];     // File read buffer
-uint8_t frame[16];    // Sound frame to send to AY
+
+
+
+
+
 FATFS  fs;
+
 
 //
 //
@@ -186,50 +183,19 @@ FATFS  fs;
 void loop() {
   int res;
   int i;
-  unsigned int br;
-  uint16_t frameNo;
-  uint16_t lastTick;
-  uint16_t  rp;
-  uint8_t   wp;
+  char filename[32];
   
-  DEBUGLED_OFF;
-  delay(500);
-  DEBUGLED_ON;
   LcdInit();
-  delay(500);
 
   LcdXY(0,0);LcdString("Mount=");
   res=pf_mount(&fs);
   LcdCharacter(48+res);
+  delay(500);
 
-  LcdXY(0,1);LcdString("Open=");
-  res=pf_open("LastNinj.ymb");
-  LcdCharacter(48+res);
-  
-  LcdXY(0,2);LcdString("Reading");
-
-  frameNo=0;
-  rp=74;
-  wp=0;
-  lastTick=tick;
-  res=pf_read(buf, sizeof(buf), &br);    
-  for (;;) {
-    for (wp=0; wp<16; wp++) {
-      if (rp==512) {
-        res=pf_read(buf, sizeof(buf), &br);
-        rp=0;
-      }
-      frame[wp]=buf[rp++];
-    }
-    while (lastTick==tick);
-    lastTick=tick;
-    for (wp=0; wp<16; wp++) AyRegister(wp, frame[wp]);
-    LcdXY(0,3);LcdString("Frame ");
-    LcdPrintUint16(frameNo);
-    frameNo++;
-  }
-
-
+  SelectFile(filename);
+  LcdClear();
+  LcdString(filename);
+  YmPlay(filename);
 
   DEBUGLED_OFF;
   for (;;) {

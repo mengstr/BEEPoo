@@ -28,7 +28,7 @@ static uint8_t ayPort;
 //
 void AYinactive(void) {
   DIR_LOW;
-  __asm__("nop\n\t");
+  // __asm__("nop\n\t");
   BC1_LOW;
   __asm__("nop\n\t");
   __asm__("nop\n\t");
@@ -58,7 +58,7 @@ void AYlatch(void) {
   __asm__("nop\n\t");
   __asm__("nop\n\t");
   BC1_HIGH;
-  __asm__("nop\n\t");
+  // __asm__("nop\n\t");
   DIR_HIGH;
   __asm__("nop\n\t");
   __asm__("nop\n\t");
@@ -88,16 +88,16 @@ void AYwrite(void) {
   __asm__("nop\n\t");
   __asm__("nop\n\t");
   BC1_LOW;
-  __asm__("nop\n\t");
-  __asm__("nop\n\t");
-  __asm__("nop\n\t");
-  __asm__("nop\n\t");
-  __asm__("nop\n\t");
-  __asm__("nop\n\t");
-  __asm__("nop\n\t");
-  __asm__("nop\n\t");
-  __asm__("nop\n\t");
-  __asm__("nop\n\t");
+  // __asm__("nop\n\t");
+  // __asm__("nop\n\t");
+  // __asm__("nop\n\t");
+  // __asm__("nop\n\t");
+  // __asm__("nop\n\t");
+  // __asm__("nop\n\t");
+  // __asm__("nop\n\t");
+  // __asm__("nop\n\t");
+  // __asm__("nop\n\t");
+  // __asm__("nop\n\t");
   DIR_HIGH;
   __asm__("nop\n\t");
   __asm__("nop\n\t");
