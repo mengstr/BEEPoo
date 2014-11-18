@@ -387,10 +387,33 @@
 #define YMFRAMESIZE	16
 #define BLOCKSIZE	512
 
+#define MAXINFOLEN  13
+
 static uint8_t buf[BLOCKSIZE];         	// File read buffer
 static uint8_t frame[YMFRAMESIZE];      // Sound frame to send to AY
 static uint8_t lastFrame[YMFRAMESIZE];  // Last sound frame to sent to AY
 
+
+typedef struct {
+  char      fileId[4];
+  char      check[8];
+  uint32_t  frames;
+  uint32_t  attributes;
+  uint16_t  drums;
+  uint32_t  clock;
+  uint16_t  rate;
+  uint32_t  loopframe;
+  uint16_t  skip;
+} YM_HDR1_t; 
+
+
+inline static  uint16_t E16(uint16_t x) {
+    return (x>>8) | (x<<8);
+}
+
+inline static  uint32_t E32(uint32_t x) {
+    return (E16(x&0xffff)<<16) | (E16(x>>16));
+}
 
 //
 //
@@ -402,20 +425,71 @@ void YmPlay(char *filename) {
   uint16_t lastTick;
   uint16_t  rp;
   uint8_t   wp;
+  uint16_t cnt;
+  YM_HDR1_t *ym_hdr1;
+  uint32_t ymFrames;
+  uint32_t ymAttributes; 
+  uint16_t ymDrums;
+  uint32_t ymClock;
+  uint16_t ymRate; 
+  uint32_t ymLoop;
+  uint16_t ymSkip;
+
+
 
   LcdClear();
-  LcdXY(0,1);LcdString("Open=");
+  LcdXY(0,0);LcdString("Open=");
   res=pf_open(filename);
   LcdCharacter(48+res);
-  
-  LcdXY(0,2);LcdString("Reading");
 
-  frameNo=0;
-  rp=74;
+  // Get meta data from part of first block
+  res=pf_read(buf, sizeof(buf), &br);    
+  ym_hdr1=&buf;
+
+  ymFrames=E32(ym_hdr1->frames);
+  ymAttributes=E32(ym_hdr1->attributes); 
+  ymDrums=E16(ym_hdr1->drums);
+  ymClock=E32(ym_hdr1->clock);
+  ymRate=E16(ym_hdr1->rate); 
+  ymLoop=E32(ym_hdr1->loopframe);
+  ymSkip=E16(ym_hdr1->skip);
+  rp=sizeof(YM_HDR1_t);
+
+  LcdPrintUint16(ymDrums, 1);
+
+
+  // Song name
+  LcdXY(0,1);
+  cnt=0;
+  do {
+    if (cnt++<MAXINFOLEN) LcdCharacter(buf[rp]);
+    rp++;
+  } while (buf[rp]);
+  
+  // Author name
+  LcdXY(0,2);
+  rp++;
+  cnt=0;
+  do {
+    if (cnt++<MAXINFOLEN) LcdCharacter(buf[rp]);
+    rp++;
+  } while (buf[rp]);
+  rp++;
+  cnt=0;
+ 
+  // Comments
+  LcdXY(0,3);
+  do {
+    if (cnt++<MAXINFOLEN) LcdCharacter(buf[rp]);
+    rp++;
+  } while (buf[rp]);
+  rp++;
+  cnt=0;
+
+  // Now start sending data frames to AY-chip
   wp=0;
   lastTick=timer1Tick;
-  res=pf_read(buf, sizeof(buf), &br);    
-  for (;;) {
+  for (frameNo=0; frameNo<ymFrames; frameNo++) {
     for (wp=0; wp<YMFRAMESIZE; wp++) {
       if (rp==BLOCKSIZE) {
         res=pf_read(buf, sizeof(buf), &br);
@@ -436,9 +510,12 @@ void YmPlay(char *filename) {
         if (wp!=13 || frame[wp]!=0xFF) AyRegister(wp, frame[wp]);
       }
     }
-
-    LcdXY(0,3);LcdString("Frame ");
-    LcdPrintUint16(frameNo);
+  
+    LcdXY(0,6);
+    LcdPrintUint16((uint16_t)ymFrames, 1);
+    LcdTinyDigit(':');
+    LcdPrintUint16(frameNo, 1);
+    LcdTinyDigit(':');
     frameNo++;
   }
 }

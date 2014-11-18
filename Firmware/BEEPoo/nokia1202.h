@@ -25,8 +25,9 @@ void LcdXY(uint8_t x, uint8_t y);
 void LcdClear(void);
 void LcdFill(void);
 void LcdCharacter(char ch);
+void LcdTinyDigit(char ch);
 void LcdString(char *string);
-void LcdPrintUint16(uint16_t value);
+void LcdPrintUint16(uint16_t value, uint8_t type);
 
 #ifdef __cplusplus
 }

@@ -14,6 +14,32 @@
 
 #include "nokia1202.h"
 
+
+// 0x02   XXX  X  XXX XXX X X XXX XXX XXX XXX XXX ... ...
+// 0x04   X X XX    X   X X X X   X     X X X X X .X. ...
+// 0x08   X X  X  XXX  XX XXX XXX XXX  X  XXX XXX ... ...
+// 0x10   X X  X  X     X   X   X X X  X  X X   X .X. ...
+// 0x20   XXX XXX XXX XXX   X XXX XXX  X  XXX XXX ... ...
+
+//
+// A 3x5 pixel font for the Nokia 1202 LCD
+//
+static const uint8_t font3px[][3] = {
+   {0x3E, 0x22, 0x3E}   // 0
+  ,{0x24, 0x3E, 0x20}   // 1
+  ,{0x3A, 0x2A, 0x2E}   // 2 
+  ,{0x22, 0x22, 0x3E}   // 3
+  ,{0x0E, 0x08, 0x3E}   // 4
+  ,{0x2E, 0x2A, 0x3A}   // 5
+  ,{0x3E, 0x2A, 0x3A}   // 6
+  ,{0x02, 0x3A, 0x06}   // 7
+  ,{0x3E, 0x2A, 0x3E}   // 8
+  ,{0x2E, 0x2A, 0x3E}   // 9
+  ,{0x00, 0x14, 0x00}   // :
+  ,{0x00, 0x00, 0x00}   // ; (shown as space)
+};
+
+
 //
 // A 5x8 pixel font for the Nokia 1202 LCD
 //
@@ -176,9 +202,22 @@ void LcdCharacter(char ch) {
 
   LcdSend(LCD_D, 0x00);
   for (index=0; index<5; index++) {
-    LcdSend(LCD_D, font5px[ch-0x20][index]);
+    LcdSend(LCD_D, font5px[ch-' '][index]);
   }
 }
+
+//
+// Print a single tiny (3x5 px) digit on the display
+//
+void LcdTinyDigit(char ch) {
+  uint16_t index;
+
+  LcdSend(LCD_D, 0x00);
+  for (index=0; index<3; index++) {
+    LcdSend(LCD_D, font3px[ch-'0'][index]);
+  }
+}
+
 
 
 //
@@ -193,8 +232,9 @@ void LcdString(char *string){
 
 //
 // Print an uint16_t as a string with 0-padding
+// If type==0 regular font, type==1 tiny digit font
 //
-void LcdPrintUint16(uint16_t value) {
+void LcdPrintUint16(uint16_t value, uint8_t type) {
   static uint16_t powers[]={10,100,1000,10000,100000,1000000,10000000,100000000,1000000000};
   uint16_t power; 
   char digit;
@@ -207,10 +247,12 @@ void LcdPrintUint16(uint16_t value) {
       value -= power;
       digit++;
     }
-    LcdCharacter(digit);
+    if (type) LcdTinyDigit(digit); else LcdCharacter(digit);
   }
-  LcdCharacter('0'+value);
+  value+='0';
+  if (type) LcdTinyDigit(value); else LcdCharacter(value);
 }
+
 
 //
 // Send all the required initialization commands to the display

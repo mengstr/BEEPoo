@@ -184,7 +184,7 @@ void loop() {
   int res;
   int i;
   char filename[32];
-  
+
   LcdInit();
 
   LcdXY(0,0);LcdString("Mount=");

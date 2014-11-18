@@ -19,6 +19,8 @@
 #include "selectFile.h"
 
 
+#define DEBUGLED_ON  PORTB |= B10000000
+#define DEBUGLED_OFF PORTB &= B01111111
 
 
 //
@@ -55,6 +57,7 @@ static uint16_t scan_files(char* path, uint16_t startNo) {
 
   res=pf_opendir(&dir, path);
   if (res!=FR_OK) return -1;
+  DEBUGLED_ON;
   for (;;) {
     res=pf_readdir(&dir, &fno);
     if (res!=FR_OK || fno.fname[0]==0) break;
@@ -82,6 +85,7 @@ static uint16_t scan_files(char* path, uint16_t startNo) {
     }
     if (line==8) break;
   }
+  DEBUGLED_OFF;
   return line;
 }
 
